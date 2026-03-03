@@ -3,549 +3,861 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flood Monitoring Dashboard</title>
+  <title>Flood Monitoring System</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <style>
-        :root {
-            --primary-bg: #e8f4f8;
-            --secondary-bg: #ffffff;
-            --accent-blue: #4a9bbe;
-            --accent-teal: #2d8a96;
-            --success-green: #52b788;
-            --warning-amber: #f59e0b;
-            --danger-red: #ef4444;
-            --text-dark: #1e293b;
-            --text-light: #64748b;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary-bg) 0%, #f0f9fc 100%);
-            color: var(--text-dark);
-        }
-
-        .dashboard-wrapper {
-            height: 100%;
-            overflow-y: auto;
-            padding: 2rem;
-        }
-
-        .header {
-            margin-bottom: 2.5rem;
-            text-align: center;
-        }
-
-        .header-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header-location {
-            font-size: 1rem;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-            animation: pulse 2s infinite;
-        }
-
-        .status-safe {
-            background-color: var(--success-green);
-        }
-
-        .status-warning {
-            background-color: var(--warning-amber);
-        }
-
-        .status-danger {
-            background-color: var(--danger-red);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .sensor-card {
-            background: var(--secondary-bg);
-            border-radius: 1.5rem;
-            padding: 1.75rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .sensor-card:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-            transform: translateY(-4px);
-        }
-
-        .sensor-card.warning {
-            border-color: var(--warning-amber);
-            background: linear-gradient(135deg, #fffbeb, var(--secondary-bg));
-        }
-
-        .sensor-card.danger {
-            border-color: var(--danger-red);
-            background: linear-gradient(135deg, #fee2e2, var(--secondary-bg));
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        .gauge-container {
-            position: relative;
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .gauge-circle {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: conic-gradient(
-                var(--success-green) 0deg 120deg,
-                var(--warning-amber) 120deg 240deg,
-                var(--danger-red) 240deg 360deg
-            );
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .gauge-inner {
-            position: absolute;
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            background: var(--primary-bg);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .gauge-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--accent-teal);
-        }
-
-        .gauge-unit {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            font-weight: 500;
-        }
-
-        .gauge-needle {
-            position: absolute;
-            width: 4px;
-            height: 50%;
-            background: var(--text-dark);
-            bottom: 50%;
-            left: 50%;
-            transform-origin: bottom center;
-            border-radius: 2px;
-            margin-left: -2px;
-            transition: transform 0.5s ease;
-        }
-
-        .sensor-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .stat-item {
-            padding: 1rem;
-            background: var(--primary-bg);
-            border-radius: 0.75rem;
-            text-align: center;
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            text-transform: uppercase;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--accent-blue);
-        }
-
-        .chart-section {
-            background: var(--secondary-bg);
-            border-radius: 1.5rem;
-            padding: 1.75rem;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            margin-bottom: 2rem;
-        }
-
-        .chart-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-dark);
-            margin-bottom: 1.5rem;
-        }
-
-        .chart-placeholder {
-            width: 100%;
-            height: 250px;
-            background: linear-gradient(90deg, #f0f9fc, #e8f4f8, #f0f9fc);
-            border-radius: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-light);
-            font-weight: 500;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .chart-bars {
-            display: flex;
-            align-items: flex-end;
-            gap: 0.5rem;
-            width: 100%;
-            height: 100%;
-            padding: 1rem;
-            justify-content: space-around;
-        }
-
-        .chart-bar {
-            flex: 1;
-            background: linear-gradient(180deg, var(--accent-blue), var(--accent-teal));
-            border-radius: 0.5rem 0.5rem 0 0;
-            opacity: 0.7;
-            transition: all 0.3s ease;
-            min-height: 10px;
-        }
-
-        .chart-bar:hover {
-            opacity: 1;
-            transform: translateY(-2px);
-        }
-
-        .alert-section {
-            background: linear-gradient(135deg, #fef3c7, #fef08a);
-            border-left: 4px solid var(--warning-amber);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            gap: 1rem;
-            align-items: flex-start;
-        }
-
-        .alert-icon {
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
-
-        .alert-text {
-            color: #92400e;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-
-        .alert-text strong {
-            display: block;
-            margin-bottom: 0.25rem;
-        }
-
-        .footer {
-            text-align: center;
-            color: var(--text-light);
-            font-size: 0.85rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .timestamp {
-            color: var(--text-light);
-            font-size: 0.8rem;
-            margin-top: 0.75rem;
-        }
-    </style>
+    * { font-family: 'Nunito', sans-serif; }
+    .tab-active { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); color: white; }
+    .card-shadow { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1); }
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .pulse-indicator { animation: pulse-soft 2s ease-in-out infinite; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fade-in 0.4s ease-out; }
+  </style>
   <style>body { box-sizing: border-box; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body>
-  <div class="dashboard-wrapper"><!-- Header -->
-   <div class="header">
-    <h1 class="header-title" id="system-title">Flood Monitoring System</h1>
-    <p class="header-location"><span class="status-indicator status-safe"></span> <span id="location-name">River Site Alpha</span></p>
-   </div><!-- Alert Banner (conditionally shown) -->
-   <div class="alert-section" id="alert-banner" style="display: none;">
-    <div class="alert-icon">
-     ⚠️
-    </div>
-    <div class="alert-text"><strong>Water Level Alert</strong> <span id="alert-message">Water level is approaching critical threshold</span>
-    </div>
-   </div><!-- Sensor Cards Grid -->
-   <div class="grid-container"><!-- Water Level Card -->
-    <div class="sensor-card" id="water-card">
-     <div class="card-header"><span class="card-title">Water Level</span> <span style="font-size: 1.5rem;">💧</span>
-     </div>
-     <div class="gauge-container">
-      <div class="gauge-circle"></div>
-      <div class="gauge-inner">
-       <div class="gauge-value" id="water-value">
-        2.4
+ <body class="h-full bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+  <div id="app" class="h-full w-full overflow-auto"><!-- Header -->
+   <header class="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-4 py-4">
+     <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+       <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center"><span class="text-white text-xl">🌊</span>
        </div>
-       <div class="gauge-unit">
-        meters
+       <div>
+        <h1 id="app-title" class="text-xl font-bold text-gray-800">Flood Monitoring System</h1>
+        <p id="welcome-msg" class="text-xs text-gray-500">Real-time Water Level Tracking</p>
        </div>
       </div>
-      <div class="gauge-needle" id="water-needle" style="transform: rotate(45deg);"></div>
-     </div>
-     <div class="sensor-stats">
-      <div class="stat-item">
-       <div class="stat-label">
-        Max
-       </div>
-       <div class="stat-value" id="water-max">
-        5.2
-       </div>
+      <div class="flex items-center gap-2"><span class="pulse-indicator w-2 h-2 bg-green-500 rounded-full"></span> <span class="text-sm text-gray-600">Live</span>
       </div>
-      <div class="stat-item">
-       <div class="stat-label">
-        Min
-       </div>
-       <div class="stat-value" id="water-min">
-        0.8
-       </div>
-      </div>
-     </div>
-     <div class="timestamp" id="water-time">
-      Last updated: 2 min ago
-     </div>
-    </div><!-- Soil Moisture Card -->
-    <div class="sensor-card">
-     <div class="card-header"><span class="card-title">Soil Moisture</span> <span style="font-size: 1.5rem;">🌱</span>
-     </div>
-     <div class="gauge-container">
-      <div class="gauge-circle"></div>
-      <div class="gauge-inner">
-       <div class="gauge-value" id="soil-value">
-        65
-       </div>
-       <div class="gauge-unit">
-        %
-       </div>
-      </div>
-      <div class="gauge-needle" id="soil-needle" style="transform: rotate(130deg);"></div>
-     </div>
-     <div class="sensor-stats">
-      <div class="stat-item">
-       <div class="stat-label">
-        Max
-       </div>
-       <div class="stat-value" id="soil-max">
-        98
-       </div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-label">
-        Min
-       </div>
-       <div class="stat-value" id="soil-min">
-        32
-       </div>
-      </div>
-     </div>
-     <div class="timestamp">
-      Last updated: 1 min ago
-     </div>
-    </div><!-- Rainfall Card -->
-    <div class="sensor-card">
-     <div class="card-header"><span class="card-title">Rainfall</span> <span style="font-size: 1.5rem;">🌧️</span>
-     </div>
-     <div class="gauge-container">
-      <div class="gauge-circle"></div>
-      <div class="gauge-inner">
-       <div class="gauge-value" id="rain-value">
-        18
-       </div>
-       <div class="gauge-unit">
-        mm/h
-       </div>
-      </div>
-      <div class="gauge-needle" id="rain-needle" style="transform: rotate(215deg);"></div>
-     </div>
-     <div class="sensor-stats">
-      <div class="stat-item">
-       <div class="stat-label">
-        24h Total
-       </div>
-       <div class="stat-value" id="rain-total">
-        142
-       </div>
-      </div>
-      <div class="stat-item">
-       <div class="stat-label">
-        Intensity
-       </div>
-       <div class="stat-value" id="rain-intensity">
-        Moderate
-       </div>
-      </div>
-     </div>
-     <div class="timestamp">
-      Last updated: Just now
      </div>
     </div>
-   </div><!-- Charts Section -->
-   <div class="chart-section">
-    <h2 class="chart-title">24-Hour Water Level Trend</h2>
-    <div class="chart-placeholder">
-     <div class="chart-bars">
-      <div class="chart-bar" style="height: 35%; animation-delay: 0s;"></div>
-      <div class="chart-bar" style="height: 42%; animation-delay: 0.1s;"></div>
-      <div class="chart-bar" style="height: 38%; animation-delay: 0.2s;"></div>
-      <div class="chart-bar" style="height: 55%; animation-delay: 0.3s;"></div>
-      <div class="chart-bar" style="height: 62%; animation-delay: 0.4s;"></div>
-      <div class="chart-bar" style="height: 58%; animation-delay: 0.5s;"></div>
-      <div class="chart-bar" style="height: 65%; animation-delay: 0.6s;"></div>
-      <div class="chart-bar" style="height: 48%; animation-delay: 0.7s;"></div>
-     </div>
+   </header><!-- Navigation Tabs -->
+   <nav class="max-w-6xl mx-auto px-4 py-4">
+    <div class="flex gap-2 bg-white/60 p-2 rounded-2xl"><button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 tab-active"> 📊 Dashboard </button> <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-blue-100"> 📈 History </button> <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-blue-100"> 📝 Reports </button> <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 text-gray-600 hover:bg-blue-100"> ⚙️ Settings </button>
     </div>
-   </div>
-   <div class="chart-section">
-    <h2 class="chart-title">Rainfall (Last 24 Hours)</h2>
-    <div class="chart-placeholder">
-     <div class="chart-bars">
-      <div class="chart-bar" style="height: 15%;"></div>
-      <div class="chart-bar" style="height: 22%;"></div>
-      <div class="chart-bar" style="height: 28%;"></div>
-      <div class="chart-bar" style="height: 45%;"></div>
-      <div class="chart-bar" style="height: 52%;"></div>
-      <div class="chart-bar" style="height: 38%;"></div>
-      <div class="chart-bar" style="height: 18%;"></div>
-      <div class="chart-bar" style="height: 8%;"></div>
+   </nav><!-- Main Content -->
+   <main class="max-w-6xl mx-auto px-4 pb-8"><!-- Dashboard Tab -->
+    <section id="content-dashboard" class="tab-content fade-in">
+     <div class="grid md:grid-cols-3 gap-4 mb-6"><!-- Water Level Sensor Card -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center"><span class="text-2xl">📊</span>
+        </div><span class="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-medium">Water Level</span>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Current Level</h3>
+       <div class="flex items-baseline gap-2"><span id="ultrasonic-value" class="text-3xl font-bold text-gray-800">45</span> <span class="text-gray-500">cm</span>
+       </div>
+       <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div id="ultrasonic-bar" class="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-500" style="width: 45%"></div>
+       </div>
+       <p class="text-xs text-gray-400 mt-2">Safe threshold: 50cm</p>
+      </div><!-- Rainfall Sensor Card -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center"><span class="text-2xl">🌧️</span>
+        </div><span class="text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full font-medium">Rainfall</span>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Today's Rain</h3>
+       <div class="flex items-baseline gap-2"><span id="rain-value" class="text-3xl font-bold text-gray-800">12.5</span> <span class="text-gray-500">mm</span>
+       </div>
+       <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div id="rain-bar" class="h-full bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full transition-all duration-500" style="width: 25%"></div>
+       </div>
+       <p class="text-xs text-gray-400 mt-2">Heavy rain: &gt;20mm</p>
+      </div><!-- Soil Moisture Card -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center"><span class="text-2xl">💧</span>
+        </div><span class="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full font-medium">Ground Level</span>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Soil Saturation</h3>
+       <div class="flex items-baseline gap-2"><span id="moisture-value" class="text-3xl font-bold text-gray-800">68</span> <span class="text-gray-500">%</span>
+       </div>
+       <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div id="moisture-bar" class="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500" style="width: 68%"></div>
+       </div>
+       <p id="moisture-status" class="text-xs text-green-600 mt-2">✓ Normal saturation</p>
+      </div>
+     </div><!-- Alert Status -->
+     <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+      <h3 class="font-semibold text-gray-800 mb-4">🚨 Alert Status</h3>
+      <div id="alert-status" class="space-y-3">
+       <div class="p-4 bg-green-50 rounded-xl border-l-4 border-green-500">
+        <div class="flex items-start justify-between">
+         <div>
+          <p class="font-medium text-green-900">✓ Safe</p>
+          <p class="text-sm text-green-700 mt-1">All parameters within safe limits</p>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Quick Status -->
+     <div class="bg-white rounded-2xl p-6 card-shadow">
+      <h3 class="font-semibold text-gray-800 mb-4">📋 System Status</h3>
+      <div class="grid md:grid-cols-4 gap-4">
+       <div class="flex items-center gap-3 p-3 bg-green-50 rounded-xl"><span class="w-3 h-3 bg-green-500 rounded-full"></span>
+        <div>
+         <p class="text-sm font-medium text-gray-700">System Status</p>
+         <p class="text-xs text-green-600">All sensors operational</p>
+        </div>
+       </div>
+       <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl"><span class="text-xl">🔋</span>
+        <div>
+         <p class="text-sm font-medium text-gray-700">Battery</p>
+         <p class="text-xs text-blue-600">87%</p>
+        </div>
+       </div>
+       <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl"><span class="text-xl">📶</span>
+        <div>
+         <p class="text-sm font-medium text-gray-700">Signal</p>
+         <p class="text-xs text-purple-600">Strong</p>
+        </div>
+       </div>
+       <div class="flex items-center gap-3 p-3 bg-orange-50 rounded-xl"><span class="text-xl">🕐</span>
+        <div>
+         <p class="text-sm font-medium text-gray-700">Last Update</p>
+         <p id="last-update" class="text-xs text-orange-600">Just now</p>
+        </div>
+       </div>
+      </div>
      </div>
-    </div>
-   </div><!-- Footer -->
-   <div class="footer">
-    <p>🔄 Real-time monitoring • Auto-refresh every 60 seconds</p>
-   </div>
+    </section><!-- History Tab -->
+    <section id="content-history" class="tab-content hidden fade-in">
+     <div class="grid md:grid-cols-2 gap-6 mb-6"><!-- Line Chart - Water Level -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <h3 class="font-semibold text-gray-800 mb-4">📊 Water Level - 7 Day Trend</h3>
+       <div class="relative h-48">
+        <svg viewbox="0 0 300 120" class="w-full h-full"><!-- Grid lines --> <line x1="40" y1="20" x2="290" y2="20" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="50" x2="290" y2="50" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="80" x2="290" y2="80" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="110" x2="290" y2="110" stroke="#e5e5e5" stroke-width="1" /> <!-- Y-axis labels --> <text x="35" y="23" text-anchor="end" class="text-xs" fill="#9ca3af">
+          80cm
+         </text> <text x="35" y="53" text-anchor="end" class="text-xs" fill="#9ca3af">
+          60cm
+         </text> <text x="35" y="83" text-anchor="end" class="text-xs" fill="#9ca3af">
+          40cm
+         </text> <text x="35" y="113" text-anchor="end" class="text-xs" fill="#9ca3af">
+          20cm
+         </text> <!-- Data line --> <polyline points="50,50 90,40 130,60 170,35 210,55 250,30 290,45" fill="none" stroke="#0284c7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" /> <!-- Data points --> <circle cx="50" cy="50" r="4" fill="#0284c7" /> <circle cx="90" cy="40" r="4" fill="#0284c7" /> <circle cx="130" cy="60" r="4" fill="#0284c7" /> <circle cx="170" cy="35" r="4" fill="#0284c7" /> <circle cx="210" cy="55" r="4" fill="#0284c7" /> <circle cx="250" cy="30" r="4" fill="#0284c7" /> <circle cx="290" cy="45" r="4" fill="#0284c7" />
+        </svg>
+       </div>
+       <div class="flex justify-between text-xs text-gray-400 mt-2 px-4"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+       </div>
+      </div><!-- Bar Chart - Rainfall -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <h3 class="font-semibold text-gray-800 mb-4">🌧️ Rainfall - 7 Day History</h3>
+       <div class="relative h-48">
+        <svg viewbox="0 0 300 120" class="w-full h-full"><!-- Grid lines --> <line x1="40" y1="20" x2="290" y2="20" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="50" x2="290" y2="50" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="80" x2="290" y2="80" stroke="#f0f0f0" stroke-width="1" /> <line x1="40" y1="110" x2="290" y2="110" stroke="#e5e5e5" stroke-width="1" /> <!-- Y-axis labels --> <text x="35" y="23" text-anchor="end" class="text-xs" fill="#9ca3af">
+          40mm
+         </text> <text x="35" y="53" text-anchor="end" class="text-xs" fill="#9ca3af">
+          30mm
+         </text> <text x="35" y="83" text-anchor="end" class="text-xs" fill="#9ca3af">
+          20mm
+         </text> <text x="35" y="113" text-anchor="end" class="text-xs" fill="#9ca3af">
+          10mm
+         </text> <!-- Bars --> <rect x="50" y="85" width="25" height="25" rx="4" fill="#06b6d4" /> <rect x="90" y="60" width="25" height="50" rx="4" fill="#06b6d4" /> <rect x="130" y="95" width="25" height="15" rx="4" fill="#06b6d4" /> <rect x="170" y="40" width="25" height="70" rx="4" fill="#06b6d4" /> <rect x="210" y="75" width="25" height="35" rx="4" fill="#06b6d4" /> <rect x="250" y="90" width="25" height="20" rx="4" fill="#06b6d4" />
+        </svg>
+       </div>
+       <div class="flex justify-between text-xs text-gray-400 mt-2 px-4"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+       </div>
+      </div>
+     </div><!-- Data Table -->
+     <div class="bg-white rounded-2xl p-6 card-shadow">
+      <h3 class="font-semibold text-gray-800 mb-4">📊 Historical Data Table</h3>
+      <div class="overflow-x-auto">
+       <table class="w-full text-sm">
+        <thead>
+         <tr class="border-b border-gray-100">
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Date</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Water Level</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Rainfall</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Soil Saturation</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+         </tr>
+        </thead>
+        <tbody>
+         <tr class="border-b border-gray-50 hover:bg-green-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">Today</td>
+          <td class="py-3 px-4 text-gray-700">45 cm</td>
+          <td class="py-3 px-4 text-gray-700">68%</td>
+          <td class="py-3 px-4 text-gray-700">12.5 mm</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Good</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-green-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">Yesterday</td>
+          <td class="py-3 px-4 text-gray-700">52 cm</td>
+          <td class="py-3 px-4 text-gray-700">72%</td>
+          <td class="py-3 px-4 text-gray-700">8.2 mm</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Good</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-green-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">2 days ago</td>
+          <td class="py-3 px-4 text-gray-700">38 cm</td>
+          <td class="py-3 px-4 text-gray-700">55%</td>
+          <td class="py-3 px-4 text-gray-700">22.1 mm</td>
+          <td class="py-3 px-4"><span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Rainy</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-green-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">3 days ago</td>
+          <td class="py-3 px-4 text-gray-700">61 cm</td>
+          <td class="py-3 px-4 text-gray-700">45%</td>
+          <td class="py-3 px-4 text-gray-700">0 mm</td>
+          <td class="py-3 px-4"><span class="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs">Dry</span></td>
+         </tr>
+         <tr class="hover:bg-green-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">4 days ago</td>
+          <td class="py-3 px-4 text-gray-700">58 cm</td>
+          <td class="py-3 px-4 text-gray-700">62%</td>
+          <td class="py-3 px-4 text-gray-700">5.3 mm</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Good</span></td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </section><!-- Alerts Tab -->
+    <section id="content-alerts" class="tab-content hidden fade-in">
+     <div class="grid md:grid-cols-2 gap-6 mb-6"><!-- Alert Rules -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <h3 class="font-semibold text-gray-800 mb-4">🔔 Active Alerts</h3>
+       <div id="alert-list" class="space-y-3">
+        <div class="p-4 bg-red-50 rounded-xl border-l-4 border-red-500">
+         <div class="flex items-start justify-between">
+          <div>
+           <p class="font-medium text-red-900">⚠️ High Water Level Alert</p>
+           <p class="text-sm text-red-700 mt-1">Water level exceeded 60cm threshold</p>
+           <p class="text-xs text-red-600 mt-2">Triggered: 2 hours ago</p>
+          </div><button onclick="dismissAlert(this)" class="text-red-400 hover:text-red-600">✕</button>
+         </div>
+        </div>
+        <div class="p-4 bg-yellow-50 rounded-xl border-l-4 border-yellow-500">
+         <div class="flex items-start justify-between">
+          <div>
+           <p class="font-medium text-yellow-900">⚡ Heavy Rainfall Warning</p>
+           <p class="text-sm text-yellow-700 mt-1">Rainfall exceeding 20mm today</p>
+           <p class="text-xs text-yellow-600 mt-2">Triggered: 30 minutes ago</p>
+          </div><button onclick="dismissAlert(this)" class="text-yellow-400 hover:text-yellow-600">✕</button>
+         </div>
+        </div>
+       </div>
+      </div><!-- Alert Thresholds -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <h3 class="font-semibold text-gray-800 mb-4">⚙️ Alert Settings</h3>
+       <div class="space-y-4">
+        <div>
+         <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">High Water Level (cm)</label> <span id="water-alert-val" class="text-sm text-red-600 font-medium">60 cm</span>
+         </div><input type="range" id="water-alert-threshold" min="40" max="80" value="60" class="w-full accent-red-500">
+        </div>
+        <div>
+         <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">Low Water Level (cm)</label> <span id="water-low-val" class="text-sm text-orange-600 font-medium">20 cm</span>
+         </div><input type="range" id="water-low-threshold" min="5" max="30" value="20" class="w-full accent-orange-500">
+        </div>
+        <div>
+         <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">Heavy Rainfall Alert (mm)</label> <span id="rain-alert-val" class="text-sm text-cyan-600 font-medium">20 mm</span>
+         </div><input type="range" id="rain-alert-threshold" min="10" max="50" value="20" class="w-full accent-cyan-500">
+        </div>
+        <div>
+         <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">High Saturation Alert (%)</label> <span id="sat-alert-val" class="text-sm text-amber-600 font-medium">80%</span>
+         </div><input type="range" id="saturation-alert-threshold" min="50" max="95" value="80" class="w-full accent-amber-500">
+        </div>
+       </div>
+      </div>
+     </div><!-- Alert History -->
+     <div class="bg-white rounded-2xl p-6 card-shadow">
+      <h3 class="font-semibold text-gray-800 mb-4">📋 Alert History</h3>
+      <div class="overflow-x-auto">
+       <table class="w-full text-sm">
+        <thead>
+         <tr class="border-b border-gray-100">
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Date &amp; Time</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Alert Type</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Trigger Value</th>
+          <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+         </tr>
+        </thead>
+        <tbody>
+         <tr class="border-b border-gray-50 hover:bg-blue-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">Today 2:30 PM</td>
+          <td class="py-3 px-4 text-gray-700">High Water Level</td>
+          <td class="py-3 px-4 text-gray-700">62 cm</td>
+          <td class="py-3 px-4"><span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs">Active</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-blue-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">Today 3:15 PM</td>
+          <td class="py-3 px-4 text-gray-700">Heavy Rainfall</td>
+          <td class="py-3 px-4 text-gray-700">22.5 mm</td>
+          <td class="py-3 px-4"><span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs">Active</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-blue-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">Yesterday 5:00 PM</td>
+          <td class="py-3 px-4 text-gray-700">Low Water Level</td>
+          <td class="py-3 px-4 text-gray-700">18 cm</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Resolved</span></td>
+         </tr>
+         <tr class="border-b border-gray-50 hover:bg-blue-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">2 days ago 1:20 PM</td>
+          <td class="py-3 px-4 text-gray-700">High Saturation</td>
+          <td class="py-3 px-4 text-gray-700">85%</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Resolved</span></td>
+         </tr>
+         <tr class="hover:bg-blue-50/50 transition-colors">
+          <td class="py-3 px-4 text-gray-700">3 days ago 11:45 AM</td>
+          <td class="py-3 px-4 text-gray-700">High Water Level</td>
+          <td class="py-3 px-4 text-gray-700">65 cm</td>
+          <td class="py-3 px-4"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs">Resolved</span></td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </section><!-- Reports Tab -->
+    <section id="content-reports" class="tab-content hidden fade-in">
+     <div class="grid md:grid-cols-3 gap-6 mb-6"><!-- Report Summary Cards -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center"><span class="text-2xl">📊</span>
+        </div>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Avg Water Level</h3>
+       <div class="flex items-baseline gap-2"><span class="text-3xl font-bold text-gray-800">48</span> <span class="text-gray-500">cm</span>
+       </div>
+       <p class="text-xs text-gray-400 mt-2">This week average</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center"><span class="text-2xl">🌧️</span>
+        </div>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Total Rainfall</h3>
+       <div class="flex items-baseline gap-2"><span class="text-3xl font-bold text-gray-800">85.3</span> <span class="text-gray-500">mm</span>
+       </div>
+       <p class="text-xs text-gray-400 mt-2">This month</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <div class="flex items-center justify-between mb-4">
+        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center"><span class="text-2xl">⚠️</span>
+        </div>
+       </div>
+       <h3 class="text-gray-500 text-sm mb-1">Risk Events</h3>
+       <div class="flex items-baseline gap-2"><span class="text-3xl font-bold text-gray-800">3</span> <span class="text-gray-500">alerts</span>
+       </div>
+       <p class="text-xs text-gray-400 mt-2">This month</p>
+      </div>
+     </div><!-- Generate Report -->
+     <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+      <h3 class="font-semibold text-gray-800 mb-4">📋 Generate Report</h3>
+      <div class="space-y-4">
+       <div class="grid md:grid-cols-3 gap-4">
+        <div><label class="block text-sm font-medium text-gray-600 mb-2">Report Type</label> <select id="report-type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"> <option value="weekly">Weekly Summary</option> <option value="monthly">Monthly Report</option> <option value="custom">Custom Range</option> </select>
+        </div>
+        <div><label class="block text-sm font-medium text-gray-600 mb-2">Location</label> <input type="text" id="report-location" placeholder="Monitoring station name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+        </div>
+        <div><label class="block text-sm font-medium text-gray-600 mb-2">&nbsp;</label> <button onclick="generateReport()" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all duration-300"> 📥 Generate </button>
+        </div>
+       </div>
+      </div>
+     </div><!-- Report List -->
+     <div class="bg-white rounded-2xl p-6 card-shadow">
+      <h3 class="font-semibold text-gray-800 mb-4">📂 Generated Reports</h3>
+      <div class="space-y-3">
+       <div class="p-4 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors cursor-pointer">
+        <div class="flex items-center justify-between">
+         <div>
+          <p class="font-medium text-gray-700">Weekly Report - Week 1</p>
+          <p class="text-sm text-gray-500 mt-1">Generated on Dec 15, 2024</p>
+         </div>
+         <div class="flex gap-2"><button onclick="viewReport()" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">👁️ View</button> <button onclick="downloadReport()" class="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">⬇️ Download</button>
+         </div>
+        </div>
+       </div>
+       <div class="p-4 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors cursor-pointer">
+        <div class="flex items-center justify-between">
+         <div>
+          <p class="font-medium text-gray-700">Monthly Report - November 2024</p>
+          <p class="text-sm text-gray-500 mt-1">Generated on Dec 1, 2024</p>
+         </div>
+         <div class="flex gap-2"><button onclick="viewReport()" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">👁️ View</button> <button onclick="downloadReport()" class="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">⬇️ Download</button>
+         </div>
+        </div>
+       </div>
+       <div class="p-4 border border-gray-200 rounded-xl hover:border-blue-300 transition-colors cursor-pointer">
+        <div class="flex items-center justify-between">
+         <div>
+          <p class="font-medium text-gray-700">Custom Report - Oct 20 to Nov 5</p>
+          <p class="text-sm text-gray-500 mt-1">Generated on Nov 6, 2024</p>
+         </div>
+         <div class="flex gap-2"><button onclick="viewReport()" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">👁️ View</button> <button onclick="downloadReport()" class="px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium">⬇️ Download</button>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Settings Tab -->
+     <section id="content-settings" class="tab-content hidden fade-in">
+      <div class="grid md:grid-cols-2 gap-6 mb-6"><!-- Alert Thresholds -->
+       <div class="bg-white rounded-2xl p-6 card-shadow">
+        <h3 class="font-semibold text-gray-800 mb-4">⚠️ Alert Thresholds</h3>
+        <div class="space-y-4">
+         <div>
+          <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">High Water Level (cm)</label> <span id="water-high-val" class="text-sm text-red-600 font-medium">60 cm</span>
+          </div><input type="range" id="water-high-threshold" min="40" max="80" value="60" class="w-full accent-red-500" onchange="updateThresholdDisplay('water-high')">
+         </div>
+         <div>
+          <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">Low Water Level (cm)</label> <span id="water-low-val" class="text-sm text-orange-600 font-medium">20 cm</span>
+          </div><input type="range" id="water-low-threshold" min="5" max="30" value="20" class="w-full accent-orange-500" onchange="updateThresholdDisplay('water-low')">
+         </div>
+         <div>
+          <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">Heavy Rainfall (mm)</label> <span id="rain-threshold-val" class="text-sm text-cyan-600 font-medium">20 mm</span>
+          </div><input type="range" id="rain-threshold" min="10" max="50" value="20" class="w-full accent-cyan-500" onchange="updateThresholdDisplay('rain')">
+         </div>
+         <div>
+          <div class="flex justify-between mb-2"><label class="text-sm font-medium text-gray-600">High Saturation (%)</label> <span id="saturation-val" class="text-sm text-amber-600 font-medium">80%</span>
+          </div><input type="range" id="saturation-threshold" min="50" max="95" value="80" class="w-full accent-amber-500" onchange="updateThresholdDisplay('saturation')">
+         </div>
+        </div>
+       </div><!-- Notification Settings -->
+       <div class="bg-white rounded-2xl p-6 card-shadow">
+        <h3 class="font-semibold text-gray-800 mb-4">🔔 Notification Settings</h3>
+        <div class="space-y-3">
+         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div>
+           <p class="font-medium text-gray-700">Email Alerts</p>
+           <p class="text-xs text-gray-500">Get alerts via email</p>
+          </div><input type="checkbox" checked class="w-5 h-5 accent-green-500 cursor-pointer rounded">
+         </div>
+         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div>
+           <p class="font-medium text-gray-700">SMS Notifications</p>
+           <p class="text-xs text-gray-500">Critical alerts only</p>
+          </div><input type="checkbox" checked class="w-5 h-5 accent-green-500 cursor-pointer rounded">
+         </div>
+         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div>
+           <p class="font-medium text-gray-700">Push Notifications</p>
+           <p class="text-xs text-gray-500">Real-time app alerts</p>
+          </div><input type="checkbox" checked class="w-5 h-5 accent-green-500 cursor-pointer rounded">
+         </div>
+         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div>
+           <p class="font-medium text-gray-700">Data Logging</p>
+           <p class="text-xs text-gray-500">Save all measurements</p>
+          </div><input type="checkbox" checked class="w-5 h-5 accent-green-500 cursor-pointer rounded">
+         </div>
+        </div>
+       </div>
+      </div><!-- Sensor Info & Maintenance -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+       <h3 class="font-semibold text-gray-800 mb-4">🔧 Sensor Information &amp; Maintenance</h3>
+       <div class="grid md:grid-cols-3 gap-4">
+        <div class="p-4 border border-gray-200 rounded-xl">
+         <div class="flex items-center gap-3 mb-3"><span class="text-2xl">📡</span>
+          <div>
+           <p class="font-medium text-gray-700">Ultrasonic Sensor</p>
+           <p class="text-xs text-gray-500">HC-SR04</p>
+          </div>
+         </div>
+         <div class="space-y-2 text-sm text-gray-600">
+          <div class="flex justify-between">
+           <span>Status:</span><span class="font-medium text-green-600">✓ Active</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Accuracy:</span><span class="font-medium">±1cm</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Battery:</span><span class="font-medium">92%</span>
+          </div>
+         </div><button onclick="calibrateSensor('ultrasonic')" class="mt-3 w-full py-2 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium">⚙️ Calibrate</button>
+        </div>
+        <div class="p-4 border border-gray-200 rounded-xl">
+         <div class="flex items-center gap-3 mb-3"><span class="text-2xl">💧</span>
+          <div>
+           <p class="font-medium text-gray-700">Soil Moisture</p>
+           <p class="text-xs text-gray-500">Capacitive v1.2</p>
+          </div>
+         </div>
+         <div class="space-y-2 text-sm text-gray-600">
+          <div class="flex justify-between">
+           <span>Status:</span><span class="font-medium text-green-600">✓ Active</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Accuracy:</span><span class="font-medium">±5%</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Battery:</span><span class="font-medium">88%</span>
+          </div>
+         </div><button onclick="calibrateSensor('moisture')" class="mt-3 w-full py-2 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium">⚙️ Calibrate</button>
+        </div>
+        <div class="p-4 border border-gray-200 rounded-xl">
+         <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🌧️</span>
+          <div>
+           <p class="font-medium text-gray-700">Rain Gauge</p>
+           <p class="text-xs text-gray-500">Tipping Bucket</p>
+          </div>
+         </div>
+         <div class="space-y-2 text-sm text-gray-600">
+          <div class="flex justify-between">
+           <span>Status:</span><span class="font-medium text-green-600">✓ Active</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Accuracy:</span><span class="font-medium">±0.5mm</span>
+          </div>
+          <div class="flex justify-between">
+           <span>Battery:</span><span class="font-medium">95%</span>
+          </div>
+         </div><button onclick="calibrateSensor('rain')" class="mt-3 w-full py-2 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium">⚙️ Calibrate</button>
+        </div>
+       </div>
+      </div><!-- System Preferences -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+       <h3 class="font-semibold text-gray-800 mb-4">⚙️ System Preferences</h3>
+       <div class="grid md:grid-cols-2 gap-6">
+        <div><label class="block text-sm font-medium text-gray-600 mb-2">Update Frequency (seconds)</label> <select id="update-frequency" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="5">Every 5 seconds (Real-time)</option> <option value="10" selected>Every 10 seconds (Default)</option> <option value="30">Every 30 seconds</option> <option value="60">Every 1 minute</option> </select>
+        </div>
+        <div><label class="block text-sm font-medium text-gray-600 mb-2">Temperature Unit</label> <select id="temp-unit" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"> <option value="celsius" selected>Celsius (°C)</option> <option value="fahrenheit">Fahrenheit (°F)</option> </select>
+        </div>
+       </div><button onclick="savePreferences()" class="mt-4 w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all">💾 Save Preferences</button>
+      </div><!-- About -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+       <h3 class="font-semibold text-gray-800 mb-4">ℹ️ About This System</h3>
+       <div class="text-gray-600 space-y-3">
+        <p class="text-sm">This Flood Monitoring System provides real-time flood risk assessment and early warning capabilities.</p>
+        <div class="grid grid-cols-2 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+         <div>
+          <p class="text-xs text-gray-500">Version</p>
+          <p class="font-semibold text-gray-800">1.0.0</p>
+         </div>
+         <div>
+          <p class="text-xs text-gray-500">Last Updated</p>
+          <p class="font-semibold text-gray-800">Dec 2024</p>
+         </div>
+         <div>
+          <p class="text-xs text-gray-500">System Uptime</p>
+          <p class="font-semibold text-gray-800">45 days</p>
+         </div>
+         <div>
+          <p class="text-xs text-gray-500">Records Stored</p>
+          <p class="font-semibold text-gray-800">2,847</p>
+         </div>
+        </div>
+       </div>
+      </div>
+     </section>
+    </section>
+   </main>
   </div>
   <script>
-        // Element SDK Configuration
-        const defaultConfig = {
-            system_title: 'Flood Monitoring System',
-            location_name: 'River Site Alpha'
+    // Default configuration
+    const defaultConfig = {
+      app_title: 'Flood Monitoring System',
+      welcome_message: 'Real-time Water Level Tracking',
+      background_color: '#f0fdf4',
+      surface_color: '#ffffff',
+      text_color: '#1f2937',
+      primary_action_color: '#22c55e',
+      secondary_action_color: '#06b6d4'
+    };
+
+    // Reports data from Data SDK
+    let reportsData = [];
+    let currentRecordCount = 0;
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('tab-active');
+        el.classList.add('text-gray-600');
+      });
+      
+      const content = document.getElementById(`content-${tabName}`);
+      const tab = document.getElementById(`tab-${tabName}`);
+      
+      if (content) {
+        content.classList.remove('hidden');
+        content.classList.add('fade-in');
+      }
+      if (tab) {
+        tab.classList.add('tab-active');
+        tab.classList.remove('text-gray-600');
+      }
+    }
+
+    // Simulate sensor updates
+    function updateSensors() {
+      const ultrasonic = Math.floor(Math.random() * 30) + 30;
+      const moisture = Math.floor(Math.random() * 40) + 40;
+      const rain = (Math.random() * 20 + 5).toFixed(1);
+
+      document.getElementById('ultrasonic-value').textContent = ultrasonic;
+      document.getElementById('ultrasonic-bar').style.width = `${ultrasonic}%`;
+      
+      document.getElementById('moisture-value').textContent = moisture;
+      document.getElementById('moisture-bar').style.width = `${moisture}%`;
+      
+      const moistureStatus = document.getElementById('moisture-status');
+      if (moisture < 40) {
+        moistureStatus.textContent = '⚠️ Needs watering';
+        moistureStatus.className = 'text-xs text-amber-600 mt-2';
+      } else if (moisture > 80) {
+        moistureStatus.textContent = '💧 Very wet';
+        moistureStatus.className = 'text-xs text-blue-600 mt-2';
+      } else {
+        moistureStatus.textContent = '✓ Optimal moisture';
+        moistureStatus.className = 'text-xs text-green-600 mt-2';
+      }
+      
+      document.getElementById('rain-value').textContent = rain;
+      document.getElementById('rain-bar').style.width = `${parseFloat(rain) * 2}%`;
+      
+      document.getElementById('last-update').textContent = 'Just now';
+      
+      // Update alert status
+      updateAlertStatus(ultrasonic, moisture, parseFloat(rain));
+    }
+
+    // Update alert status based on sensor readings
+    function updateAlertStatus(waterLevel, saturation, rainfall) {
+      const alertContainer = document.getElementById('alert-status');
+      const alerts = [];
+
+      // Check thresholds
+      if (waterLevel > 60) {
+        alerts.push({
+          type: 'danger',
+          icon: '⚠️',
+          title: 'High Water Level',
+          message: `Water level is ${waterLevel}cm - exceeds safe limit of 50cm`,
+          color: 'red'
+        });
+      }
+      
+      if (waterLevel < 20) {
+        alerts.push({
+          type: 'warning',
+          icon: '⚠️',
+          title: 'Low Water Level',
+          message: `Water level is ${waterLevel}cm - below normal`,
+          color: 'orange'
+        });
+      }
+      
+      if (rainfall > 20) {
+        alerts.push({
+          type: 'warning',
+          icon: '⚡',
+          title: 'Heavy Rainfall',
+          message: `Rainfall is ${rainfall}mm - heavy rain detected`,
+          color: 'yellow'
+        });
+      }
+      
+      if (saturation > 80) {
+        alerts.push({
+          type: 'warning',
+          icon: '💧',
+          title: 'High Saturation',
+          message: `Soil saturation is ${saturation}% - very high`,
+          color: 'amber'
+        });
+      }
+
+      // Build alert HTML
+      if (alerts.length === 0) {
+        alertContainer.innerHTML = `
+          <div class="p-4 bg-green-50 rounded-xl border-l-4 border-green-500">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="font-medium text-green-900">✓ Safe</p>
+                <p class="text-sm text-green-700 mt-1">All parameters within safe limits</p>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        const colorMap = {
+          red: { bg: 'bg-red-50', border: 'border-red-500', title: 'text-red-900', text: 'text-red-700' },
+          orange: { bg: 'bg-orange-50', border: 'border-orange-500', title: 'text-orange-900', text: 'text-orange-700' },
+          yellow: { bg: 'bg-yellow-50', border: 'border-yellow-500', title: 'text-yellow-900', text: 'text-yellow-700' },
+          amber: { bg: 'bg-amber-50', border: 'border-amber-500', title: 'text-amber-900', text: 'text-amber-700' }
         };
 
-        const config = { ...defaultConfig };
+        alertContainer.innerHTML = alerts.map(alert => {
+          const colors = colorMap[alert.color];
+          return `
+            <div class="p-4 ${colors.bg} rounded-xl border-l-4 ${colors.border}">
+              <div class="flex items-start justify-between">
+                <div>
+                  <p class="font-medium ${colors.title}">${alert.icon} ${alert.title}</p>
+                  <p class="text-sm ${colors.text} mt-1">${alert.message}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
 
-        // Initialize Element SDK
+    // Generate report
+    function generateReport() {
+      const reportType = document.getElementById('report-type').value;
+      const location = document.getElementById('report-location').value.trim() || 'Station A';
+      
+      if (!location) {
+        showToast('Please enter location', 'error');
+        return;
+      }
+
+      const reportName = reportType === 'weekly' ? 'Weekly Report' : reportType === 'monthly' ? 'Monthly Report' : 'Custom Report';
+      showToast(`📥 Report generated for ${location}!`);
+      
+      // Clear inputs
+      document.getElementById('report-location').value = '';
+    }
+
+    // View report
+    function viewReport() {
+      showToast('📖 Opening report...');
+    }
+
+    // Download report
+    function downloadReport() {
+      showToast('⬇️ Report downloaded!');
+    }
+
+    // Update threshold display
+    function updateThresholdDisplay(type) {
+      const inputs = {
+        'water-high': { input: 'water-high-threshold', display: 'water-high-val', suffix: ' cm' },
+        'water-low': { input: 'water-low-threshold', display: 'water-low-val', suffix: ' cm' },
+        'rain': { input: 'rain-threshold', display: 'rain-threshold-val', suffix: ' mm' },
+        'saturation': { input: 'saturation-threshold', display: 'saturation-val', suffix: '%' }
+      };
+      
+      if (inputs[type]) {
+        const value = document.getElementById(inputs[type].input).value;
+        document.getElementById(inputs[type].display).textContent = value + inputs[type].suffix;
+      }
+    }
+
+    // Calibrate sensor
+    function calibrateSensor(sensor) {
+      const sensorNames = { 'ultrasonic': 'Ultrasonic Sensor', 'moisture': 'Soil Moisture', 'rain': 'Rain Gauge' };
+      showToast(`⚙️ Calibrating ${sensorNames[sensor]}...`);
+      setTimeout(() => {
+        showToast(`✓ ${sensorNames[sensor]} calibrated successfully!`);
+      }, 1500);
+    }
+
+    // Save preferences
+    function savePreferences() {
+      const frequency = document.getElementById('update-frequency').value;
+      const tempUnit = document.getElementById('temp-unit').value;
+      showToast(`💾 Preferences saved! Updates every ${frequency}s (${tempUnit})`);
+    }
+
+    // Toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-xl shadow-lg z-50 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} text-white font-medium`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Data handler for SDK
+    const dataHandler = {
+      onDataChanged(data) {
+        reportsData = data;
+        currentRecordCount = data.length;
+      }
+    };
+
+    // Element SDK config change handler
+    async function onConfigChange(config) {
+      const titleEl = document.getElementById('app-title');
+      const welcomeEl = document.getElementById('welcome-msg');
+      
+      if (titleEl) titleEl.textContent = config.app_title || defaultConfig.app_title;
+      if (welcomeEl) welcomeEl.textContent = config.welcome_message || defaultConfig.welcome_message;
+      
+      // Apply colors
+      document.body.style.background = `linear-gradient(135deg, ${config.background_color || defaultConfig.background_color} 0%, #ecfdf5 50%, #f0fdfa 100%)`;
+      
+      document.querySelectorAll('.card-shadow').forEach(el => {
+        el.style.backgroundColor = config.surface_color || defaultConfig.surface_color;
+      });
+      
+      document.querySelectorAll('.tab-active').forEach(el => {
+        el.style.background = `linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color} 0%, #22c55e 100%)`;
+      });
+    }
+
+    // Map to capabilities
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.background_color || defaultConfig.background_color,
+            set: (value) => { config.background_color = value; window.elementSdk.setConfig({ background_color: value }); }
+          },
+          {
+            get: () => config.surface_color || defaultConfig.surface_color,
+            set: (value) => { config.surface_color = value; window.elementSdk.setConfig({ surface_color: value }); }
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => { config.text_color = value; window.elementSdk.setConfig({ text_color: value }); }
+          },
+          {
+            get: () => config.primary_action_color || defaultConfig.primary_action_color,
+            set: (value) => { config.primary_action_color = value; window.elementSdk.setConfig({ primary_action_color: value }); }
+          },
+          {
+            get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+            set: (value) => { config.secondary_action_color = value; window.elementSdk.setConfig({ secondary_action_color: value }); }
+          }
+        ],
+        borderables: [],
+        fontEditable: undefined,
+        fontSizeable: undefined
+      };
+    }
+
+    // Map to edit panel values
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ['app_title', config.app_title || defaultConfig.app_title],
+        ['welcome_message', config.welcome_message || defaultConfig.welcome_message]
+      ]);
+    }
+
+    // Initialize
+    async function init() {
+      // Initialize Element SDK
+      if (window.elementSdk) {
         window.elementSdk.init({
-            defaultConfig,
-            onConfigChange: async (updatedConfig) => {
-                config.system_title = updatedConfig.system_title || defaultConfig.system_title;
-                config.location_name = updatedConfig.location_name || defaultConfig.location_name;
-
-                document.getElementById('system-title').textContent = config.system_title;
-                document.getElementById('location-name').textContent = config.location_name;
-            },
-            mapToCapabilities: (cfg) => ({
-                recolorables: [],
-                borderables: [],
-                fontEditable: undefined,
-                fontSizeable: undefined
-            }),
-            mapToEditPanelValues: (cfg) => new Map([
-                ['system_title', cfg.system_title || defaultConfig.system_title],
-                ['location_name', cfg.location_name || defaultConfig.location_name]
-            ])
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
         });
+      }
 
-        // Simulate sensor data updates
-        function updateSensorData() {
-            // Simulate water level
-            const waterLevel = 2.4 + (Math.random() - 0.5) * 0.3;
-            document.getElementById('water-value').textContent = waterLevel.toFixed(1);
-            const waterAngle = (waterLevel / 6) * 300 - 30;
-            document.getElementById('water-needle').style.transform = `rotate(${waterAngle}deg)`;
-
-            // Update alert if needed
-            if (waterLevel > 4.5) {
-                document.getElementById('alert-banner').style.display = 'flex';
-                document.getElementById('alert-message').textContent = 'Water level is critically high! Immediate action required.';
-                document.getElementById('water-card').classList.add('danger');
-            } else if (waterLevel > 4) {
-                document.getElementById('alert-banner').style.display = 'flex';
-                document.getElementById('alert-message').textContent = 'Water level is approaching critical threshold.';
-                document.getElementById('water-card').classList.add('warning');
-            } else {
-                document.getElementById('alert-banner').style.display = 'none';
-                document.getElementById('water-card').classList.remove('warning', 'danger');
-            }
-
-            // Simulate soil moisture
-            const soilMoisture = 65 + (Math.random() - 0.5) * 5;
-            document.getElementById('soil-value').textContent = Math.round(soilMoisture);
-            const soilAngle = (soilMoisture / 100) * 300 - 30;
-            document.getElementById('soil-needle').style.transform = `rotate(${soilAngle}deg)`;
-
-            // Simulate rainfall
-            const rainfall = 18 + (Math.random() - 0.5) * 8;
-            document.getElementById('rain-value').textContent = Math.round(rainfall);
-            const rainAngle = (rainfall / 50) * 300 - 30;
-            document.getElementById('rain-needle').style.transform = `rotate(${rainAngle}deg)`;
+      // Initialize Data SDK
+      if (window.dataSdk) {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) {
+          console.error('Failed to initialize Data SDK');
         }
+      }
 
-        // Update on page load and every 5 seconds (for demo)
-        updateSensorData();
-        setInterval(updateSensorData, 5000);
-    </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d6a1985f0d2a559',t:'MTc3MjU1NjIwMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+      // Start sensor simulation
+      updateSensors();
+      setInterval(updateSensors, 10000);
+    }
+
+    init();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d6a501923dec7bd',t:'MTc3MjU1ODQzNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
