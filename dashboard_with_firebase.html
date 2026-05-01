@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Monitoring System - Firebase Dashboard</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .tab-active { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); color: white; }
+        .card-shadow { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1); }
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .pulse-indicator { animation: pulse-soft 2s ease-in-out infinite; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.4s ease-out; }
+        @keyframes pulse-danger { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .sos-pulse { animation: pulse-danger 0.5s ease-in-out infinite; }
+        .danger-blink { animation: blink-danger 0.6s ease-in-out infinite; }
+        @keyframes blink-danger { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        body { box-sizing: border-box; }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+<div id="app" class="h-full w-full overflow-auto">
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center">
+                        <span class="text-white text-xl">🌊</span>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800">Flood Monitoring System</h1>
+                        <p class="text-xs text-gray-500">Real-time Water Level Tracking with Firebase</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <span id="connection-status" class="pulse-indicator w-2 h-2 bg-red-500 rounded-full"></span>
+                        <span id="status-text" class="text-sm text-gray-600">Connecting...</span>
+                    </div>
+                    <!-- SOS Button (Always Visible) -->
+                    <button onclick="triggerSOS()" id="sos-btn" 
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg">
+                        🆘 SOS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-6xl mx-auto px-4 py-4">
+        <div class="flex gap-2 bg-white/60 p-2 rounded-2xl flex-wrap">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all tab-active">📊 Dashboard</button>
+            <button onclick="switchTab('alerts')" id="tab-alerts" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">🚨 Alerts</button>
+            <button onclick="switchTab('history')" id="tab-history" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">📈 History</button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">⚙️ Settings</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 pb-8">
+        <!-- Dashboard Tab -->
+        <section id="content-dashboard" class="tab-content fade-in">
+            <!-- Status Alert Banner -->
+            <div id="alert-banner" class="hidden mb-6">
+                <div id="alert-banner-content" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl">
+                    <p id="alert-banner-text" class="text-red-900 font-semibold">⚠️ Alert Status</p>
+                </div>
+            </div>
+
+            <!-- Sensor Cards -->
+            <div class="grid md:grid-cols-3 gap-4 mb-6">
+                <!-- Water Level Card -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center"><span class="text-2xl">📊</span></div>
+                        <span class="text-xs text-blue-600 bg-blue-50 px-3 py-1 rounded-full font-medium">Water Level</span>
+                    </div>
+                    <h3 class="text-gray-500 text-sm mb-1">Current Distance</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span id="water-level-value" class="text-3xl font-bold text-gray-800">--</span>
+                        <span class="text-gray-500">cm</span>
+                    </div>
+                    <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div id="water-level-bar" class="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p id="water-status" class="text-xs text-gray-400 mt-2">Status: Waiting for data...</p>
+                </div>
+
+                <!-- Soil Moisture Card -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center"><span class="text-2xl">💧</span></div>
+                        <span class="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full font-medium">Soil Moisture</span>
+                    </div>
+                    <h3 class="text-gray-500 text-sm mb-1">Saturation Level</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span id="soil-moisture-value" class="text-3xl font-bold text-gray-800">--</span>
+                        <span class="text-gray-500">%</span>
+                    </div>
+                    <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div id="soil-moisture-bar" class="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p id="soil-status" class="text-xs text-gray-400 mt-2">Status: Waiting for data...</p>
+                </div>
+
+                <!-- Rainfall Card -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center"><span class="text-2xl">🌧️</span></div>
+                        <span class="text-xs text-cyan-600 bg-cyan-50 px-3 py-1 rounded-full font-medium">Rainfall</span>
+                    </div>
+                    <h3 class="text-gray-500 text-sm mb-1">Rain Amount</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span id="rainfall-value" class="text-3xl font-bold text-gray-800">--</span>
+                        <span class="text-gray-500">mm</span>
+                    </div>
+                    <div class="mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div id="rainfall-bar" class="h-full bg-gradient-to-r from-cyan-400 to-cyan-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p id="rain-status" class="text-xs text-gray-400 mt-2">Status: Waiting for data...</p>
+                </div>
+            </div>
+
+            <!-- Overall Status -->
+            <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+                <h3 class="font-semibold text-gray-800 mb-4">🚨 System Status</h3>
+                <div id="system-status" class="p-4 bg-green-50 rounded-xl border-l-4 border-green-500">
+                    <p class="font-medium text-green-900">✓ All Systems Operational</p>
+                    <p class="text-sm text-green-700 mt-1">Waiting for sensor data...</p>
+                </div>
+                <div class="grid md:grid-cols-4 gap-4 mt-4">
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
+                        <span id="firebase-status" class="w-3 h-3 bg-red-500 rounded-full"></span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Firebase</p>
+                            <p class="text-xs text-red-600">Connecting...</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                        <span class="text-xl">📡</span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Connection</p>
+                            <p id="esp-status" class="text-xs text-gray-600">Offline</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                        <span class="text-xl">📶</span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Signal</p>
+                            <p id="signal-strength" class="text-xs text-purple-600">--</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                        <span class="text-xl">🕐</span>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Last Update</p>
+                            <p id="last-update-time" class="text-xs text-orange-600">Never</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-2xl p-6 card-shadow">
+                <h3 class="font-semibold text-gray-800 mb-4">⚡ Quick Actions</h3>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <button onclick="resetData()" class="p-4 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-colors">
+                        <p class="font-semibold text-blue-600">🔄 Reset Data</p>
+                        <p class="text-xs text-gray-600 mt-1">Clear all recorded values</p>
+                    </button>
+                    <button onclick="exportData()" class="p-4 border-2 border-green-200 rounded-xl hover:bg-green-50 transition-colors">
+                        <p class="font-semibold text-green-600">📥 Export Data</p>
+                        <p class="text-xs text-gray-600 mt-1">Download as CSV</p>
+                    </button>
+                    <button onclick="manualTest()" class="p-4 border-2 border-purple-200 rounded-xl hover:bg-purple-50 transition-colors">
+                        <p class="font-semibold text-purple-600">🧪 Test Mode</p>
+                        <p class="text-xs text-gray-600 mt-1">Simulate sensor data</p>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Alerts Tab -->
+        <section id="content-alerts" class="tab-content hidden fade-in">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Active Alerts -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-4">🔔 Active Alerts</h3>
+                    <div id="active-alerts-list" class="space-y-3">
+                        <p class="text-gray-500 text-center py-8">No active alerts</p>
+                    </div>
+                </div>
+
+                <!-- Alert Settings -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-4">⚙️ Alert Thresholds</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-600">Danger Distance (cm)</label>
+                                <span id="danger-threshold-val" class="text-sm text-red-600 font-medium">10</span>
+                            </div>
+                            <input type="range" id="danger-threshold" min="5" max="20" value="10" class="w-full accent-red-500" onchange="updateThreshold('danger')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-600">Warning Distance (cm)</label>
+                                <span id="warning-threshold-val" class="text-sm text-yellow-600 font-medium">20</span>
+                            </div>
+                            <input type="range" id="warning-threshold" min="15" max="40" value="20" class="w-full accent-yellow-500" onchange="updateThreshold('warning')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-600">High Soil Moisture (%)</label>
+                                <span id="moisture-threshold-val" class="text-sm text-amber-600 font-medium">50</span>
+                            </div>
+                            <input type="range" id="moisture-threshold" min="30" max="80" value="50" class="w-full accent-amber-500" onchange="updateThreshold('moisture')">
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-medium text-gray-600">Heavy Rain (mm)</label>
+                                <span id="rain-threshold-val" class="text-sm text-cyan-600 font-medium">2.0</span>
+                            </div>
+                            <input type="range" id="rain-threshold" min="0.5" max="5" step="0.5" value="2.0" class="w-full accent-cyan-500" onchange="updateThreshold('rain')">
+                        </div>
+                    </div>
+                    <button onclick="saveThresholds()" class="mt-4 w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600">
+                        💾 Save Thresholds
+                    </button>
+                </div>
+            </div>
+
+            <!-- Alert History -->
+            <div class="bg-white rounded-2xl p-6 card-shadow mt-6">
+                <h3 class="font-semibold text-gray-800 mb-4">📋 Alert History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-100">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Date & Time</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Alert Type</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Value</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alert-history-table">
+                            <tr class="border-b border-gray-50">
+                                <td colspan="4" class="py-8 px-4 text-center text-gray-500">No alert history</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Tab -->
+        <section id="content-history" class="tab-content hidden fade-in">
+            <div class="bg-white rounded-2xl p-6 card-shadow">
+                <h3 class="font-semibold text-gray-800 mb-4">📊 Data History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-100">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Timestamp</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Water Level (cm)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Soil Moisture (%)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Rainfall (mm)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table">
+                            <tr class="border-b border-gray-50">
+                                <td colspan="5" class="py-8 px-4 text-center text-gray-500">No historical data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Tab -->
+        <section id="content-settings" class="tab-content hidden fade-in">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Firebase Configuration -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-4">🔧 Firebase Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Firebase URL</label>
+                            <input type="text" id="firebase-url" placeholder="https://your-project.firebaseio.com" 
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Database Path</label>
+                            <input type="text" id="database-path" placeholder="floodMonitoring/sensorData" 
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button onclick="testFirebaseConnection()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold">
+                            🧪 Test Connection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Telegram Configuration -->
+                <div class="bg-white rounded-2xl p-6 card-shadow">
+                    <h3 class="font-semibold text-gray-800 mb-4">📱 Telegram Bot Setup</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Bot Token</label>
+                            <input type="password" id="telegram-token" placeholder="1234567890:ABCdef..." 
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Chat ID</label>
+                            <input type="text" id="telegram-chat-id" placeholder="123456789" 
+                                class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <p class="text-xs text-blue-700"><strong>Setup Instructions:</strong></p>
+                            <p class="text-xs text-blue-600 mt-1">1. Create a Telegram bot with @BotFather</p>
+                            <p class="text-xs text-blue-600">2. Get your Chat ID from @userinfobot</p>
+                            <p class="text-xs text-blue-600">3. Store credentials in localStorage (secure for demo)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Preferences -->
+            <div class="bg-white rounded-2xl p-6 card-shadow mt-6">
+                <h3 class="font-semibold text-gray-800 mb-4">⚙️ System Preferences</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Update Frequency (seconds)</label>
+                        <select id="update-frequency" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none">
+                            <option value="5">Every 5 seconds</option>
+                            <option value="10" selected>Every 10 seconds</option>
+                            <option value="30">Every 30 seconds</option>
+                            <option value="60">Every 1 minute</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Alert Sound</label>
+                        <select id="alert-sound" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none">
+                            <option value="on" selected>Enabled</option>
+                            <option value="off">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="saveSettings()" class="mt-4 w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600">
+                    💾 Save Settings
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- SOS Modal -->
+    <div id="sos-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center mb-4 text-red-600">🆘 EMERGENCY SOS ACTIVATED</h2>
+            <p class="text-center text-gray-600 mb-6">Sending live location to Telegram...</p>
+            
+            <div id="sos-status" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p class="text-sm text-yellow-800">Getting your location...</p>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="sendSOSWithLocation()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors">
+                    ✓ Send SOS with Location
+                </button>
+                <button onclick="closeSOSModal()" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 rounded-lg transition-colors">
+                    ✕ Cancel
+                </button>
+            </div>
+
+            <p class="text-xs text-gray-500 text-center mt-4">The admin will receive your live location on Telegram for emergency coordination.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== FIREBASE CONFIGURATION ====================
+const firebaseConfig = {
+    // UPDATE THESE WITH YOUR FIREBASE CREDENTIALS
+    apiKey: "YOUR_API_KEY",
+    authDomain: "your-project.firebaseapp.com",
+    databaseURL: "https://your-project.firebaseio.com",
+    projectId: "your-project",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef123456"
+};
+
+// Initialize Firebase
+let database = null;
+let auth = null;
+let firebaseConnected = false;
+
+try {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    database = firebase.database();
+    auth = firebase.auth();
+    firebaseConnected = true;
+    console.log('Firebase initialized successfully');
+} catch (error) {
+    console.warn('Firebase not configured. Running in demo mode:', error);
+    firebaseConnected = false;
+}
+
+// ==================== TELEGRAM CONFIGURATION ====================
+const TELEGRAM_BOT_TOKEN = localStorage.getItem('telegramBotToken') || '';
+const TELEGRAM_CHAT_ID = localStorage.getItem('telegramChatId') || '';
+
+// ==================== THRESHOLDS & STATE ====================
+let thresholds = {
+    dangerDistance: 10,      // cm
+    warningDistance: 20,     // cm
+    moistureThreshold: 50,   // %
+    rainThreshold: 2.0       // mm
+};
+
+let sensorData = {
+    waterLevel: null,
+    soilMoisture: null,
+    rainfall: null,
+    timestamp: null
+};
+
+let alertHistory = [];
+let dataHistory = [];
+
+// ==================== UTILITY FUNCTIONS ====================
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'error' ? 'bg-red-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-green-500';
+    toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-xl shadow-lg z-50 ${bgColor} text-white font-medium`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('tab-active');
+        el.classList.add('text-gray-600');
+    });
+    
+    const content = document.getElementById(`content-${tabName}`);
+    const tab = document.getElementById(`tab-${tabName}`);
+    
+    if (content) {
+        content.classList.remove('hidden');
+        content.classList.add('fade-in');
+    }
+    if (tab) {
+        tab.classList.add('tab-active');
+        tab.classList.remove('text-gray-600');
+    }
+}
+
+function getStatusColor(waterLevel, moisture, rain) {
+    if (waterLevel <= thresholds.dangerDistance || moisture > thresholds.moistureThreshold || rain > thresholds.rainThreshold) {
+        return { status: 'danger', icon: '⚠️', color: 'red', message: 'DANGER: Check conditions' };
+    } else if (waterLevel <= thresholds.warningDistance) {
+        return { status: 'warning', icon: '⚡', color: 'yellow', message: 'WARNING: Level rising' };
+    }
+    return { status: 'safe', icon: '✓', color: 'green', message: 'SAFE: All parameters normal' };
+}
+
+function updateDashboard(waterLevel, moisture, rain) {
+    // Update sensor values
+    document.getElementById('water-level-value').textContent = waterLevel || '--';
+    document.getElementById('soil-moisture-value').textContent = moisture || '--';
+    document.getElementById('rainfall-value').textContent = rain || '--';
+
+    // Update progress bars
+    if (waterLevel) {
+        document.getElementById('water-level-bar').style.width = `${Math.min((waterLevel / 50) * 100, 100)}%`;
+        const waterStatus = waterLevel <= thresholds.dangerDistance ? '🔴 DANGER' : 
+                           waterLevel <= thresholds.warningDistance ? '🟡 WARNING' : '🟢 SAFE';
+        document.getElementById('water-status').textContent = `Status: ${waterStatus}`;
+    }
+
+    if (moisture) {
+        document.getElementById('soil-moisture-bar').style.width = `${moisture}%`;
+        const soilStatus = moisture > thresholds.moistureThreshold ? '💧 Very Wet' : '✓ Normal';
+        document.getElementById('soil-status').textContent = `Status: ${soilStatus}`;
+    }
+
+    if (rain) {
+        document.getElementById('rainfall-bar').style.width = `${Math.min((rain / 10) * 100, 100)}%`;
+        const rainStatus = rain > thresholds.rainThreshold ? '⚡ Heavy Rain' : '✓ Light Rain';
+        document.getElementById('rain-status').textContent = `Status: ${rainStatus}`;
+    }
+
+    // Update last update time
+    document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString();
+
+    // Update system status
+    const statusInfo = getStatusColor(waterLevel || 0, moisture || 0, rain || 0);
+    const systemStatus = document.getElementById('system-status');
+    const statusClass = statusInfo.color === 'green' ? 'bg-green-50 border-green-500 text-green-900' :
+                       statusInfo.color === 'yellow' ? 'bg-yellow-50 border-yellow-500 text-yellow-900' :
+                       'bg-red-50 border-red-500 text-red-900';
+    
+    systemStatus.className = `p-4 rounded-xl border-l-4 ${statusClass}`;
+    systemStatus.innerHTML = `
+        <p class="font-medium">${statusInfo.icon} ${statusInfo.message}</p>
+        <p class="text-sm mt-1">Water: ${waterLevel}cm | Soil: ${moisture}% | Rain: ${rain}mm</p>
+    `;
+
+    // Show alert banner if needed
+    if (statusInfo.status !== 'safe') {
+        document.getElementById('alert-banner').classList.remove('hidden');
+        document.getElementById('alert-banner-text').textContent = `${statusInfo.icon} ${statusInfo.message}`;
+    } else {
+        document.getElementById('alert-banner').classList.add('hidden');
+    }
+}
+
+// ==================== FIREBASE REAL-TIME LISTENER ====================
+function listenToSensorData() {
+    if (!firebaseConnected || !database) {
+        console.log('Firebase not connected, using demo data');
+        return;
+    }
+
+    try {
+        const dataPath = localStorage.getItem('databasePath') || 'floodMonitoring/sensorData';
+        database.ref(dataPath).on('value', snapshot => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                sensorData = {
+                    waterLevel: data.waterLevel || 0,
+                    soilMoisture: data.soilMoisture || 0,
+                    rainfall: data.rainfall || 0,
+                    timestamp: data.timestamp || new Date().toISOString()
+                };
+
+                // Update dashboard
+                updateDashboard(sensorData.waterLevel, sensorData.soilMoisture, sensorData.rainfall);
+                
+                // Add to history
+                dataHistory.unshift({
+                    timestamp: new Date(sensorData.timestamp).toLocaleString(),
+                    waterLevel: sensorData.waterLevel,
+                    soilMoisture: sensorData.soilMoisture,
+                    rainfall: sensorData.rainfall
+                });
+                
+                if (dataHistory.length > 100) dataHistory.pop();
+                updateHistoryTable();
+
+                // Check for alerts
+                checkAlerts(sensorData.waterLevel, sensorData.soilMoisture, sensorData.rainfall);
+
+                // Update connection status
+                updateConnectionStatus(true);
+            }
+        }, error => {
+            console.error('Firebase error:', error);
+            updateConnectionStatus(false);
+        });
+    } catch (error) {
+        console.error('Error setting up Firebase listener:', error);
+    }
+}
+
+function checkAlerts(waterLevel, moisture, rain) {
+    const timestamp = new Date().toLocaleString();
+    
+    if (waterLevel <= thresholds.dangerDistance) {
+        addAlert('DANGER', `Water level critical: ${waterLevel}cm`, timestamp, 'danger');
+    } else if (waterLevel <= thresholds.warningDistance) {
+        addAlert('WARNING', `Water level rising: ${waterLevel}cm`, timestamp, 'warning');
+    }
+
+    if (moisture > thresholds.moistureThreshold) {
+        addAlert('WARNING', `High soil moisture: ${moisture}%`, timestamp, 'warning');
+    }
+
+    if (rain > thresholds.rainThreshold) {
+        addAlert('WARNING', `Heavy rainfall: ${rain}mm`, timestamp, 'warning');
+    }
+}
+
+function addAlert(type, message, timestamp, severity) {
+    const alert = { type, message, timestamp, severity };
+    alertHistory.unshift(alert);
+    if (alertHistory.length > 50) alertHistory.pop();
+    updateAlertsList();
+    updateAlertHistoryTable();
+
+    // Play sound if enabled
+    if (localStorage.getItem('alertSound') !== 'off') {
+        playAlertSound();
+    }
+
+    showToast(`🚨 ${type}: ${message}`, 'warning');
+}
+
+function playAlertSound() {
+    // Simple beep using Web Audio API
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 1000;
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+}
+
+// ==================== UI UPDATE FUNCTIONS ====================
+function updateAlertsList() {
+    const list = document.getElementById('active-alerts-list');
+    
+    if (alertHistory.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-center py-8">No active alerts</p>';
+        return;
+    }
+
+    const colorMap = {
+        danger: { bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-900' },
+        warning: { bg: 'bg-yellow-50', border: 'border-yellow-500', text: 'text-yellow-900' }
+    };
+
+    list.innerHTML = alertHistory.slice(0, 5).map(alert => {
+        const colors = colorMap[alert.severity] || colorMap.warning;
+        return `
+            <div class="p-4 ${colors.bg} rounded-xl border-l-4 ${colors.border}">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="font-medium ${colors.text}">⚠️ ${alert.type}</p>
+                        <p class="text-sm ${colors.text} mt-1">${alert.message}</p>
+                        <p class="text-xs text-gray-500 mt-2">${alert.timestamp}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateAlertHistoryTable() {
+    const table = document.getElementById('alert-history-table');
+    
+    if (alertHistory.length === 0) {
+        table.innerHTML = '<tr class="border-b border-gray-50"><td colspan="4" class="py-8 px-4 text-center text-gray-500">No alert history</td></tr>';
+        return;
+    }
+
+    table.innerHTML = alertHistory.slice(0, 20).map(alert => `
+        <tr class="border-b border-gray-50 hover:bg-gray-50">
+            <td class="py-3 px-4">${alert.timestamp}</td>
+            <td class="py-3 px-4">${alert.type}</td>
+            <td class="py-3 px-4">${alert.message}</td>
+            <td class="py-3 px-4"><span class="bg-${alert.severity === 'danger' ? 'red' : 'yellow'}-100 text-${alert.severity === 'danger' ? 'red' : 'yellow'}-700 px-2 py-1 rounded-full text-xs">Active</span></td>
+        </tr>
+    `).join('');
+}
+
+function updateHistoryTable() {
+    const table = document.getElementById('history-table');
+    
+    if (dataHistory.length === 0) {
+        table.innerHTML = '<tr class="border-b border-gray-50"><td colspan="5" class="py-8 px-4 text-center text-gray-500">No historical data</td></tr>';
+        return;
+    }
+
+    table.innerHTML = dataHistory.slice(0, 50).map(record => {
+        const status = record.waterLevel <= thresholds.dangerDistance ? 'DANGER' : 
+                      record.waterLevel <= thresholds.warningDistance ? 'WARNING' : 'SAFE';
+        const statusColor = record.waterLevel <= thresholds.dangerDistance ? 'red' : 
+                           record.waterLevel <= thresholds.warningDistance ? 'yellow' : 'green';
+        return `
+            <tr class="border-b border-gray-50 hover:bg-gray-50">
+                <td class="py-3 px-4">${record.timestamp}</td>
+                <td class="py-3 px-4">${record.waterLevel} cm</td>
+                <td class="py-3 px-4">${record.soilMoisture}%</td>
+                <td class="py-3 px-4">${record.rainfall} mm</td>
+                <td class="py-3 px-4"><span class="bg-${statusColor}-100 text-${statusColor}-700 px-2 py-1 rounded-full text-xs">${status}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateConnectionStatus(connected) {
+    const status = document.getElementById('connection-status');
+    const statusText = document.getElementById('status-text');
+    const firebaseStatus = document.getElementById('firebase-status');
+
+    if (connected) {
+        status.className = 'pulse-indicator w-2 h-2 bg-green-500 rounded-full';
+        statusText.textContent = 'Connected';
+        firebaseStatus.className = 'w-3 h-3 bg-green-500 rounded-full';
+    } else {
+        status.className = 'w-2 h-2 bg-red-500 rounded-full';
+        statusText.textContent = 'Offline';
+        firebaseStatus.className = 'w-3 h-3 bg-red-500 rounded-full';
+    }
+}
+
+// ==================== THRESHOLD MANAGEMENT ====================
+function updateThreshold(type) {
+    const valueMap = {
+        'danger': { input: 'danger-threshold', display: 'danger-threshold-val', key: 'dangerDistance' },
+        'warning': { input: 'warning-threshold', display: 'warning-threshold-val', key: 'warningDistance' },
+        'moisture': { input: 'moisture-threshold', display: 'moisture-threshold-val', key: 'moistureThreshold' },
+        'rain': { input: 'rain-threshold', display: 'rain-threshold-val', key: 'rainThreshold' }
+    };
+
+    if (valueMap[type]) {
+        const value = document.getElementById(valueMap[type].input).value;
+        document.getElementById(valueMap[type].display).textContent = value;
+        thresholds[valueMap[type].key] = parseFloat(value);
+    }
+}
+
+function saveThresholds() {
+    localStorage.setItem('thresholds', JSON.stringify(thresholds));
+    showToast('✓ Thresholds saved successfully!');
+}
+
+function loadThresholds() {
+    const saved = localStorage.getItem('thresholds');
+    if (saved) {
+        thresholds = JSON.parse(saved);
+        document.getElementById('danger-threshold').value = thresholds.dangerDistance;
+        document.getElementById('warning-threshold').value = thresholds.warningDistance;
+        document.getElementById('moisture-threshold').value = thresholds.moistureThreshold;
+        document.getElementById('rain-threshold').value = thresholds.rainThreshold;
+        updateThreshold('danger');
+        updateThreshold('warning');
+        updateThreshold('moisture');
+        updateThreshold('rain');
+    }
+}
+
+// ==================== SOS FUNCTIONALITY ====================
+function triggerSOS() {
+    document.getElementById('sos-modal').classList.remove('hidden');
+}
+
+function closeSOSModal() {
+    document.getElementById('sos-modal').classList.add('hidden');
+}
+
+function sendSOSWithLocation() {
+    const statusDiv = document.getElementById('sos-status');
+    
+    if (!navigator.geolocation) {
+        statusDiv.innerHTML = '<p class="text-sm text-red-800">❌ Geolocation not supported</p>';
+        return;
+    }
+
+    statusDiv.innerHTML = '<p class="text-sm text-blue-800">📍 Getting your location...</p>';
+
+    navigator.geolocation.getCurrentPosition(position => {
+        const { latitude, longitude } = position.coords;
+        const googleMapsLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+        const timestamp = new Date().toLocaleString();
+
+        statusDiv.innerHTML = `
+            <p class="text-sm text-green-800">✓ Location captured:</p>
+            <p class="text-sm text-green-800">Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(6)}</p>
+        `;
+
+        // Send to Telegram
+        sendTelegramMessage(latitude, longitude, timestamp, googleMapsLink);
+
+        // Log SOS event
+        const sosEvent = {
+            timestamp,
+            latitude,
+            longitude,
+            userInitiated: true,
+            waterLevel: sensorData.waterLevel,
+            soilMoisture: sensorData.soilMoisture,
+            rainfall: sensorData.rainfall
+        };
+
+        if (firebaseConnected && database) {
+            database.ref('floodMonitoring/sosEvents').push(sosEvent);
+        }
+
+        setTimeout(() => {
+            closeSOSModal();
+            showToast('🚀 SOS sent! Admin notified with your location', 'success');
+        }, 2000);
+    }, error => {
+        statusDiv.innerHTML = `<p class="text-sm text-red-800">❌ Location error: ${error.message}</p>`;
+    });
+}
+
+function sendTelegramMessage(lat, lng, timestamp, googleMapsLink) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.warn('Telegram not configured. In production, configure in Settings tab');
+        return;
+    }
+
+    const message = `
+🆘 *FLOOD MONITORING SOS ALERT*
+
+📍 *User Location:*
+Latitude: ${lat.toFixed(6)}
+Longitude: ${lng.toFixed(6)}
+[View on Maps](${googleMapsLink})
+
+⏰ *Time:* ${timestamp}
+
+🌊 *Current Conditions:*
+Water Level: ${sensorData.waterLevel}cm
+Soil Moisture: ${sensorData.soilMoisture}%
+Rainfall: ${sensorData.rainfall}mm
+
+🔴 Emergency response required!
+    `;
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown'
+        })
+    }).catch(error => console.error('Telegram send error:', error));
+}
+
+// ==================== QUICK ACTIONS ====================
+function resetData() {
+    dataHistory = [];
+    alertHistory = [];
+    updateHistoryTable();
+    updateAlertHistoryTable();
+    showToast('🔄 Data reset successfully');
+}
+
+function exportData() {
+    let csv = 'Timestamp,Water Level (cm),Soil Moisture (%),Rainfall (mm)\n';
+    dataHistory.forEach(record => {
+        csv += `"${record.timestamp}",${record.waterLevel},${record.soilMoisture},${record.rainfall}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flood-data-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    showToast('📥 Data exported as CSV');
+}
+
+function manualTest() {
+    const testData = {
+        waterLevel: Math.floor(Math.random() * 50),
+        soilMoisture: Math.floor(Math.random() * 100),
+        rainfall: (Math.random() * 5).toFixed(1),
+        timestamp: new Date().toISOString()
+    };
+
+    sensorData = testData;
+    updateDashboard(testData.waterLevel, testData.soilMoisture, parseFloat(testData.rainfall));
+    dataHistory.unshift({
+        timestamp: new Date().toLocaleString(),
+        ...testData
+    });
+    updateHistoryTable();
+    checkAlerts(testData.waterLevel, testData.soilMoisture, parseFloat(testData.rainfall));
+    showToast('🧪 Test data injected');
+}
+
+function testFirebaseConnection() {
+    if (!firebaseConnected) {
+        showToast('❌ Firebase not configured', 'error');
+        return;
+    }
+
+    try {
+        database.ref('.info/connected').on('value', snapshot => {
+            if (snapshot.val()) {
+                showToast('✓ Firebase connected successfully!');
+                updateConnectionStatus(true);
+            } else {
+                showToast('❌ Firebase connection failed', 'error');
+                updateConnectionStatus(false);
+            }
+        });
+    } catch (error) {
+        showToast(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem('telegramBotToken', document.getElementById('telegram-token').value);
+    localStorage.setItem('telegramChatId', document.getElementById('telegram-chat-id').value);
+    localStorage.setItem('databasePath', document.getElementById('database-path').value);
+    localStorage.setItem('updateFrequency', document.getElementById('update-frequency').value);
+    localStorage.setItem('alertSound', document.getElementById('alert-sound').value);
+    showToast('💾 Settings saved successfully!');
+}
+
+// ==================== INITIALIZATION ====================
+function init() {
+    loadThresholds();
+    listenToSensorData();
+    
+    // Restore settings
+    const savedToken = localStorage.getItem('telegramBotToken');
+    const savedChatId = localStorage.getItem('telegramChatId');
+    if (savedToken) document.getElementById('telegram-token').value = savedToken;
+    if (savedChatId) document.getElementById('telegram-chat-id').value = savedChatId;
+
+    // Start with demo data if Firebase not connected
+    if (!firebaseConnected) {
+        showToast('ℹ️ Firebase not configured. Using demo mode.', 'warning');
+        updateDashboard(35, 60, 1.5);
+    }
+
+    updateConnectionStatus(firebaseConnected);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', init);
+
+// Close SOS modal on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSOSModal();
+});
+</script>
+</body>
+</html>
