@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts - Flood Monitoring System</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Nunito', sans-serif; }
+        .tab-active { background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); color: white; }
+        .card-shadow { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.1); }
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .pulse-indicator { animation: pulse-soft 2s ease-in-out infinite; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.4s ease-out; }
+        body { box-sizing: border-box; }
+    </style>
+</head>
+<body class="h-full bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+<div id="app" class="h-full w-full overflow-auto">
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center"><span class="text-white text-xl">🌊</span></div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800">Flood Monitoring System</h1>
+                        <p class="text-xs text-gray-500">Real-time Water Level Tracking</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2"><span id="connection-status" class="pulse-indicator w-2 h-2 bg-red-500 rounded-full"></span> <span id="status-text" class="text-sm text-gray-600">Connecting...</span></div>
+                    <button onclick="location.href='index.html'" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg">🆘 SOS</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-6xl mx-auto px-4 py-4">
+        <div class="flex gap-2 bg-white/60 p-2 rounded-2xl flex-wrap">
+            <button onclick="location.href='dashboard.html'" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">📊 Dashboard</button>
+            <button onclick="location.href='alerts.html'" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all tab-active">🚨 Alerts</button>
+            <button onclick="location.href='history.html'" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">📈 History</button>
+            <button onclick="location.href='settings.html'" class="tab-btn flex-1 py-3 px-4 rounded-xl font-semibold text-sm transition-all text-gray-600">⚙️ Settings</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 pb-8">
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <!-- Active Alerts -->
+            <div class="bg-white rounded-2xl p-6 card-shadow">
+                <h3 class="font-semibold text-gray-800 mb-4">🔔 Active Alerts</h3>
+                <div id="active-alerts-list" class="space-y-3"><p class="text-gray-500 text-center py-8">No active alerts</p></div>
+            </div>
+        </div>
+
+        <!-- Alert History -->
+        <div class="bg-white rounded-2xl p-6 card-shadow">
+            <h3 class="font-semibold text-gray-800 mb-4">📋 Alert History</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-100">
+                            <th class="text-left py-3 px-4 font-semibold text-gray-600">Date & Time</th>
+                            <th class="text-left py-3 px-4 font-semibold text-gray-600">Alert Type</th>
+                            <th class="text-left py-3 px-4 font-semibold text-gray-600">Value</th>
+                            <th class="text-left py-3 px-4 font-semibold text-gray-600">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alert-history-table">
+                        <tr class="border-b border-gray-50"><td colspan="4" class="py-8 px-4 text-center text-gray-500">No alert history</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/alerts.js"></script>
+</body>
+</html>
